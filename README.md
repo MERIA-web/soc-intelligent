@@ -50,3 +50,5 @@ L'API tourne ensuite sur http://127.0.0.1:5000
 - Remplacer les données simulées par de vraies données réseau
 - Connecter l'API au frontend de l'équipe
 - Ajouter l'authentification si nécessaire
+# soc-intelligent
+Centre d'Opérations de Sécurité Intelligent -     Projet de fin de licence SSRI Cours Sonou Bénin
