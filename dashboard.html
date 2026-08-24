@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>SOC-IA — Dashboard Sécurité</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #0d1117; color: #eee; padding: 30px; }
+        h1 { color: #58a6ff; }
+        .cards { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 30px; }
+        .card { background: #161b22; padding: 20px; border-radius: 10px; flex: 1; min-width: 180px; }
+        .card h3 { margin: 0; font-size: 14px; color: #8b949e; }
+        .card p { font-size: 28px; margin: 10px 0 0; color: #58a6ff; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { padding: 10px; border-bottom: 1px solid #30363d; text-align: left; }
+        .attack { color: #f85149; }
+    </style>
+</head>
+<body>
+    <h1>🛡️ SOC-IA — Analyse des connexions réseau</h1>
+
+    <div class="cards">
+        <div class="card"><h3>Total connexions</h3><p>{{ stats.total_connexions }}</p></div>
+        <div class="card"><h3>Connexions normales</h3><p>{{ stats.connexions_normales }}</p></div>
+        <div class="card"><h3>Attaques détectées</h3><p class="attack">{{ stats.connexions_attaques }}</p></div>
+        <div class="card"><h3>Taux d'attaque</h3><p>{{ stats.taux_attaque }}%</p></div>
+    </div>
+
+    <h2>🎯 Top services ciblés par des attaques</h2>
+    <table>
+        <tr><th>Service</th><th>Nombre d'attaques</th></tr>
+        {% for service, count in top_services.items() %}
+        <tr><td>{{ service }}</td><td>{{ count }}</td></tr>
+        {% endfor %}
+    </table>
+
+    <h2>⚠️ Connexions anormales (volume élevé)</h2>
+    <table>
+        <tr><th>Protocole</th><th>Service</th><th>Octets envoyés</th><th>Label</th></tr>
+        {% for a in anomalies[:10] %}
+        <tr>
+            <td>{{ a.protocol_type }}</td>
+            <td>{{ a.service }}</td>
+            <td>{{ a.src_bytes }}</td>
+            <td class="{{ 'attack' if a.label == 'attack' else '' }}">{{ a.label }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+</body>
+</html>
