@@ -1,16 +1,7 @@
-from django.urls import path
+from rest_framework.routers import DefaultRouter
+from .views import AlerteViewSet
 
-urlpatterns = [
-    # Les views seront ajoutées par Prissy
-    # path('', AlerteListCreate.as_view(), name='alerte-list-create'),
-    # path('<int:pk>/', AlerteDetail.as_view(), name='alerte-detail'),
-]
-from .views import (
-    AlerteListCreate,
-    AlerteDetail,
-)
+router = DefaultRouter()
+router .register(r'alertes', AlerteViewSet)
 
-urlpatterns = [
-    path('', AlerteListCreate.as_view(), name='alerte-list-create'),
-    path('<int:pk>/', AlerteDetail.as_view(), name='alerte-detail'),
-]
+urlpatterns = router.urls
