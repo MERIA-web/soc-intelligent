@@ -1,0 +1,131 @@
+services:
+
+  # --- Base de données ---
+  postgres:
+    image: postgres:16-alpine
+    container_name: soc_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ../scripts/backups:/backups
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - soc_network
+
+  # --- Backend Django (pôle Backend, code dans backend/django/) ---
+  backend:
+    build:
+      context: ../../backend/django
+      dockerfile: ../../infrastructure/docker/Dockerfile.backend
+    container_name: soc_backend
+    restart: unless-stopped
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
+      DJANGO_DEBUG: ${DJANGO_DEBUG}
+    volumes:
+      - ../../backend/django:/app
+      - static_data:/app/staticfiles
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - soc_network
+
+  # --- Module IA en Flask (pôle IA, code dans ia/app/) ---
+  ia:
+    build:
+      context: ../../ia/app
+      dockerfile: ../../infrastructure/docker/Dockerfile.ia
+    container_name: soc_ia
+    restart: unless-stopped
+    environment:
+      BACKEND_URL: http://backend:8000
+    ports:
+      - "5000:5000"
+    depends_on:
+      - backend
+    networks:
+      - soc_network
+
+  # --- Elasticsearch (pôle Sécurité, config dans security/) ---
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
+    container_name: soc_elasticsearch
+    restart: unless-stopped
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+    networks:
+      - soc_network
+
+  # --- Logstash ---
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.13.4
+    container_name: soc_logstash
+    restart: unless-stopped
+    volumes:
+      - ../../security/elk/logstash/pipeline:/usr/share/logstash/pipeline
+    depends_on:
+      - elasticsearch
+    networks:
+      - soc_network
+
+  # --- Kibana ---
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.13.4
+    container_name: soc_kibana
+    restart: unless-stopped
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+    networks:
+      - soc_network
+
+  # --- Suricata ---
+  # network_mode host requis pour capturer le trafic réel de la machine.
+  suricata:
+    image: jasonish/suricata:latest
+    container_name: soc_suricata
+    restart: unless-stopped
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+      - SYS_NICE
+    volumes:
+      - ../../security/suricata/rules:/etc/suricata/rules
+      - ../../security/suricata/logs:/var/log/suricata
+    command: -i eth0
+
+networks:
+  soc_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  es_data:
+  static_data:
